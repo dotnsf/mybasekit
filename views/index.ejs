@@ -1,0 +1,209 @@
+<%- include('./header', {}) %>
+
+<title>App name</title>
+<script>
+$(function(){
+<% if ( user.role == 'admin' ){ %>
+  getUsers();
+<% } %>
+  getItems();
+});
+
+function getUsers(){
+  $.ajax({
+    type: 'GET',
+    url: '/api/users',
+    success: function( users ){
+      //users = JSON.parse( users );
+      //console.log( users );
+      users.forEach( user => {
+        var tr = "<tr><td>" + user._id + "</td><td>********</td><td>" + user.role + "</td><td>" + user.timestamp + "</td>";
+        tr += "<td><input type='button' class='btn btn-default' value='削除' onClick='deleteUser(\"" + user._id + "\")'/></td>";
+        tr += "</tr>";
+        $('#users_table_tbody').append( tr );
+      });
+      var tr = "<tr>"
+        + "<td><input type='text' id='user_username' placeholder='ユーザー名'/></td>"
+        + "<td><input type='password' id='user_password' placeholder='パスワード'/></td>"
+        + "<td><input type='text' id='user_role' placeholder='役割'/></td>"
+        + "<td> - </td>"
+        + "<td><input type='button' class='btn btn-default' value='追加' onClick='addUser();'/></td>"
+        + "</tr>"
+      $('#users_table_tbody').append( tr );
+    },
+    error: function( err ){
+      console.log( err );
+    }
+  });
+}
+
+function addUser(){
+  var id = $('#user_username').val();
+  var password = $('#user_password').val();
+  var role = $('#user_role').val();
+
+  $.ajax({
+    type: 'POST',
+    url: '/api/user',
+    data: { id: id, password: password, username: name, role: role },
+    success: function( data ){
+      window.location.href = '/';
+    },
+    error: function(){
+      window.location.href = '/';
+    }
+  });
+}
+
+function deleteUser(id){
+  console.log( 'deleteUser(): id=' + id );
+
+  if( window.confirm( 'ユーザー ' + id + ' を削除してよろしいですか？' ) ){
+    $.ajax({
+      type: 'DELETE',
+      url: '/api/user/' + id,
+      success: function( data ){
+        window.location.href = '/';
+      },
+      error: function(){
+        window.location.href = '/';
+      }
+    });
+  }
+}
+
+
+function getItems(){
+  $.ajax({
+    type: 'GET',
+    url: '/api/items',
+    success: function( items ){
+      console.log( items );
+      items.forEach( item => {
+        var owner_id = '';
+        var n = item.owner.indexOf( '#' );
+        if( n > -1 ){
+          owner_id = item.owner.substring( n + 1, item.owner.length - 1 );
+        }
+        var tr = "<tr><td>" + item.id + "</td><td>" + item.name + "</td><td>" + item.body + "</td><td>" + owner_id + "</td><td>" + item.timestamp + "</td>";
+<% if ( user.role == 0 ){ %>
+        tr += "<td><input type='button' class='btn btn-default' value='Edit' onClick='editItem(" + JSON.stringify(item) + ")'/><input type='button' class='btn btn-default' value='DELETE' onClick='deleteItem(\"" + item.id + "\")'/></td>";
+<% }else{ %>
+        tr += "<td> - </td>";
+<% } %>
+        tr += "</tr>";
+        $('#items_table_tbody').append( tr );
+      });
+
+      var tr = "<tr>"
+      + "<td><input type='text' id='item_id' placeholder='ID'/></td>"
+      + "<td><input type='text' id='item_name' placeholder='名前'/></td>"
+      + "<td><input type='text' id='item_body' placeholder='本文'/></td>"
+      + "<td> - </td>"
+      + "<td> - </td>"
+      + "<td><input type='button' class='btn btn-default' value='ADD' onClick='addItem();'/></td>"
+      + "</tr>"
+      $('#items_table_tbody').append( tr );
+    },
+    error: function( err ){
+      console.log( err );
+    }
+  });
+}
+
+function addItem(){
+  var id = $('#item_id').val();
+  var name = $('#item_name').val();
+  var body = $('#item_body').val();
+
+  $.ajax({
+    type: 'POST',
+    url: '/api/item',
+    data: { id: id, name: name, body: body, amount: amount, owner_id: owner_id },
+    success: function( data ){
+      window.location.href = '/';
+    },
+    error: function(){
+      window.location.href = '/';
+    }
+  });
+}
+
+function deleteItem(id){
+  console.log( 'deleteItem(): id=' + id );
+
+  if( window.confirm( '<%= __('items.confirm.delete') %>' + id + ' ?' ) ){
+    $.ajax({
+      type: 'DELETE',
+      url: '/api/item/' + id,
+      success: function( data ){
+        window.location.href = '/';
+      },
+      error: function(){
+        window.location.href = '/';
+      }
+    });
+  }
+}
+
+function editItem( item ){
+  $('#item_id').val( item.id );
+  $('#item_name').val( item.name );
+  $('#item_body').val( item.body );
+}
+</script>
+<style>
+html, body, {
+  background-color: #ddddff;
+  height: 100%;
+  margin: 0px;
+  padding: 0px
+}
+</style>
+</head>
+<body>
+
+<%- include('./nav', {}) %>
+
+<div class="container-fluid" style="padding:20px 0; font-size:8px;">
+  <table class="table table-hover table-bordered" id="items_table">
+    <thead class="table-inverse">
+      <tr>
+        <tr><th bgcolor="#ddddff" colspan="7">items</th></tr>
+        <th>ID</th>
+        <th>NAME</th>
+        <th>BODY</th>
+        <th>OWNER</th>
+        <th>CREATED</th>
+        <th>ACTION</th>
+      </tr>
+    </thead>
+    <tbody id="items_table_tbody">
+    </tbody>
+  </table>
+</div>
+
+<% if( user && user.role == 'admin' ){ %>
+<hr/>
+
+<div class="container-fluid" style="padding:20px 0; font-size:8px;">
+  <table class="table table-hover table-bordered" id="users_table">
+    <thead class="table-inverse">
+      <tr>
+        <tr><th bgcolor="#ddddff" colspan="7">users</th></tr>
+        <th>ID</th>
+        <th>PASSWORD</th>
+        <th>USERNAME</th>
+        <th>ROLE</th>
+        <th>CREATED</th>
+        <th>ACTION</th>
+      </tr>
+    </thead>
+    <tbody id="users_table_tbody">
+    </tbody>
+  </table>
+</div>
+
+<% } %>
+
+<%- include('./footer', {}) %>
