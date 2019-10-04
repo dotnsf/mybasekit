@@ -2,21 +2,32 @@
 
 <title>App name</title>
 <script>
+var token = $.cookie( "x-access-token" );
+
 $(function(){
 <% if ( user.role == 'admin' ){ %>
   getUsers();
 <% } %>
   getItems();
+
+  $( '#xls_file' ).on( 'change', function(){
+    var input = $(this);
+    var numFiles = input.get(0).files ? input.get(0).files.length : 1;
+    var label = input.val().replace( /\\/g, '/' ).replace( /.*\//, '' );
+    input.parent().next( ':text' ).val( label );
+    $('#uploadXLS').prop( 'disabled', ( label == '' ) );
+  });
 });
 
 function getUsers(){
   $.ajax({
     type: 'GET',
     url: '/api/users',
-    success: function( users ){
+    headers: { 'x-access-token': token },
+    success: function( result ){
       //users = JSON.parse( users );
-      //console.log( users );
-      users.forEach( user => {
+      console.log( result.users );
+      result.users.forEach( user => {
         var tr = "<tr><td>" + user._id + "</td><td>********</td><td>" + user.role + "</td><td>" + user.timestamp + "</td>";
         tr += "<td><input type='button' class='btn btn-default' value='削除' onClick='deleteUser(\"" + user._id + "\")'/></td>";
         tr += "</tr>";
@@ -45,6 +56,7 @@ function addUser(){
   $.ajax({
     type: 'POST',
     url: '/api/user',
+    headers: { 'x-access-token': token },
     data: { id: id, password: password, username: name, role: role },
     success: function( data ){
       window.location.href = '/';
@@ -62,6 +74,7 @@ function deleteUser(id){
     $.ajax({
       type: 'DELETE',
       url: '/api/user/' + id,
+      headers: { 'x-access-token': token },
       success: function( data ){
         window.location.href = '/';
       },
@@ -77,6 +90,7 @@ function getItems(){
   $.ajax({
     type: 'GET',
     url: '/api/items',
+    headers: { 'x-access-token': token },
     success: function( items ){
       console.log( items );
       items.forEach( item => {
@@ -119,6 +133,7 @@ function addItem(){
   $.ajax({
     type: 'POST',
     url: '/api/item',
+    headers: { 'x-access-token': token },
     data: { id: id, name: name, body: body, amount: amount, owner_id: owner_id },
     success: function( data ){
       window.location.href = '/';
@@ -132,10 +147,11 @@ function addItem(){
 function deleteItem(id){
   console.log( 'deleteItem(): id=' + id );
 
-  if( window.confirm( '<%= __('items.confirm.delete') %>' + id + ' ?' ) ){
+  if( window.confirm( id + '本当に削除していいですか？' ) ){
     $.ajax({
       type: 'DELETE',
       url: '/api/item/' + id,
+      headers: { 'x-access-token': token },
       success: function( data ){
         window.location.href = '/';
       },
@@ -151,6 +167,36 @@ function editItem( item ){
   $('#item_name').val( item.name );
   $('#item_body').val( item.body );
 }
+
+function uploadXSL(){
+  $('#resultUpload').html( '' );
+  var form = $('#upload_form').get()[0];
+  var data = new FormData( form );
+  var obj = getBusyOverlay( 'viewport', {color:'black', opacity:0.5, text:'uploading', style:'text-decoration:blink; font-weight:bold; font-size:12px; color:white;' } );
+  $.ajax({
+    type: 'POST',
+    url: '/api/upload',
+    headers: { 'x-access-token': token },
+    data: data,
+    processData: false,
+    contentType: false,
+    dataType: 'json',
+    success: function( data ){
+      obj.remove();
+      console.log( data ); // { status: true, .. }
+      if( data.status ){
+      }
+    },
+    error: function( jqXHR, textStatus, errorThrown ){
+      obj.remove();
+      console.log( 'uploadXSL: error' );
+      console.log( textStatus );
+      console.log( errorThrown );
+    }
+  });
+
+  return false;
+}
 </script>
 <style>
 html, body, {
@@ -164,6 +210,19 @@ html, body, {
 <body>
 
 <%- include('./nav', {}) %>
+
+<% if( user && user.role == 'admin' ){ %>
+<div class="container" style="padding:20px 0; font-size:8px;">
+  <form id="upload_form" name="upload_form" method="POST" action="/api/upload" enctype="multipart/form-data">
+    <label>
+      <span class="btn btn-primary">エクセルシート<input type="file" id="xls_file" name="file" style="display:none;"/></span>
+      <input type="text" style="background:#ccc; width:400px;" readonly=""/>
+    </label>
+    <input id="uploadXLS" type="button" class="btn btn-info" value="エクセルシート送信" onClick="uploadXLS();" disabled=""/>
+  </form>
+</div>
+<hr/>
+<% } %>
 
 <div class="container-fluid" style="padding:20px 0; font-size:8px;">
   <table class="table table-hover table-bordered" id="items_table">
